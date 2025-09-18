@@ -1,131 +1,430 @@
-// src/components/Navbar.tsx
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useState } from 'react'
-import { Menu, X, User, Briefcase, Search, MessageSquare, Bell } from 'lucide-react'
+import { useRouter } from 'next/navigation'; // AJOUTER
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { Search, Moon, Sun, Bell, Globe, ChevronDown } from 'lucide-react';
 
-export default function Navbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false) // Pour demo, à connecter avec auth plus tard
+type NavbarProps = {
+  isMobile: boolean;
+  isLoggedIn: boolean;
+  username?: string;
+  searchQuery: string;
+  onSearchChange: (v: string) => void;
+  onLoginClick: () => void;
+  onSignupClick: () => void; // gardé pour compat, non affiché
+  onAskClick?: () => void;
+  notificationsCount?: number; // optionnel pour la cloche
+};
 
+/** retourne le thème initial SANS glitch d’icône */
+function getInitialTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'light';
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light' || saved === 'dark') return saved;
+  const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  return prefersDark ? 'dark' : 'light';
+}
+
+export default function Navbar({
+  isMobile,
+  isLoggedIn,
+  username = 'user',
+  searchQuery,
+  onSearchChange,
+  onLoginClick,
+  onSignupClick, // non rendu
+  onAskClick,
+  notificationsCount = 0,
+}: NavbarProps) {
+  /* ================= THEME ================= */
+  const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+    if (theme === 'dark') root.classList.add('dark');
+    else root.classList.remove('dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+  const router = useRouter(); // AJOUTER
+
+  /* ================ LANG MENU ================ */
+  const [lang, setLang] = useState<string>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('lang') || 'en' : 'en'
+  );
+  const [showLang, setShowLang] = useState(false);
+  const langBtnRef = useRef<HTMLButtonElement | null>(null);
+  const langMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const onLang = (v: string) => {
+    setLang(v);
+    localStorage.setItem('lang', v);
+    setShowLang(false);
+  };
+
+  // fermer le menu en cliquant en dehors
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!langMenuRef.current || !langBtnRef.current) return;
+      if (
+        !langMenuRef.current.contains(t) &&
+        !langBtnRef.current.contains(t)
+      ) {
+        setShowLang(false);
+      }
+    }
+    if (showLang) document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [showLang]);
+
+  /* ================ RENDER ================ */
   return (
-    <nav className="bg-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          {/* Logo et navigation principale */}
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center">
-              <Briefcase className="h-8 w-8 text-blue-600 mr-2" />
-              <span className="font-bold text-xl text-gray-900">ProConnect</span>
-            </Link>
-
-            {/* Navigation desktop */}
-            <div className="hidden md:ml-10 md:flex md:space-x-8">
-              <Link href="/recherche" className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">
-                Trouver un projet
-              </Link>
-              <Link href="/talents" className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">
-                Trouver des talents
-              </Link>
-              <Link href="/comment-ca-marche" className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">
-                Comment ça marche
-              </Link>
-            </div>
+    <header
+      style={{
+        backgroundColor: 'var(--card)',
+        borderBottom: '1px solid var(--border)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1400,
+          margin: '0 auto',
+          padding: '0 20px',
+          height: 56,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 20,
+        }}
+      >
+        {/* Logo Spliten */}
+        <Link
+          href="/"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            textDecoration: 'none',
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: 20,
+            }}
+          >
+            S
           </div>
+          {!isMobile && (
+            <span style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>
+              Spliten
+            </span>
+          )}
+        </Link>
 
-          {/* Actions à droite */}
-          <div className="flex items-center space-x-4">
-            {/* Barre de recherche desktop */}
-            <div className="hidden md:flex items-center">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Rechercher..."
-                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                />
-                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-              </div>
-            </div>
-
-            {!isLoggedIn ? (
-              <div className="hidden md:flex items-center space-x-3">
-                <Link href="/connexion" className="text-gray-700 hover:text-blue-600 px-4 py-2 text-sm font-medium">
-                  Se connecter
-                </Link>
-                <Link href="/inscription" className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  S'inscrire
-                </Link>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center space-x-4">
-                <button className="text-gray-500 hover:text-gray-700 relative">
-                  <MessageSquare className="h-6 w-6" />
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-                </button>
-                <button className="text-gray-500 hover:text-gray-700 relative">
-                  <Bell className="h-6 w-6" />
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-                </button>
-                <Link href="/profil" className="flex items-center space-x-2">
-                  <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <User className="h-5 w-5 text-gray-600" />
-                  </div>
-                </Link>
-              </div>
-            )}
-
-            {/* Menu mobile */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden text-gray-700 hover:text-blue-600"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+        {/* Barre de recherche – centrée (max 640 = largeur colonne centrale) */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: 640 }}>
+            <Search
+              style={{
+                position: 'absolute',
+                left: 14,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--muted)',
+                width: 18,
+              }}
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder={isMobile ? 'Search...' : 'Search questions, topics, or categories'}
+              style={{
+                width: '100%',
+                padding: '10px 14px 10px 42px',
+                backgroundColor: 'var(--bg)',
+                border: '1px solid transparent',
+                borderRadius: 24,
+                fontSize: 14,
+                outline: 'none',
+                color: 'var(--text)',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--card)';
+                e.currentTarget.style.border = '1px solid #667eea';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg)';
+                e.currentTarget.style.border = '1px solid transparent';
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+              }}
+            />
           </div>
         </div>
 
-        {/* Menu mobile déroulant */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t">
-            <div className="flex flex-col space-y-3">
-              <Link href="/recherche" className="text-gray-700 hover:text-blue-600 px-3 py-2">
-                Trouver un projet
-              </Link>
-              <Link href="/talents" className="text-gray-700 hover:text-blue-600 px-3 py-2">
-                Trouver des talents
-              </Link>
-              <Link href="/comment-ca-marche" className="text-gray-700 hover:text-blue-600 px-3 py-2">
-                Comment ça marche
-              </Link>
-              <div className="border-t pt-3">
-                {!isLoggedIn ? (
-                  <>
-                    <Link href="/connexion" className="block text-gray-700 hover:text-blue-600 px-3 py-2">
-                      Se connecter
-                    </Link>
-                    <Link href="/inscription" className="block bg-blue-600 text-white text-center mx-3 py-2 rounded-lg mt-2">
-                      S'inscrire
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/messages" className="block text-gray-700 hover:text-blue-600 px-3 py-2">
-                      Messages
-                    </Link>
-                    <Link href="/notifications" className="block text-gray-700 hover:text-blue-600 px-3 py-2">
-                      Notifications
-                    </Link>
-                    <Link href="/profil" className="block text-gray-700 hover:text-blue-600 px-3 py-2">
-                      Mon profil
-                    </Link>
-                  </>
+        {/* Actions à droite */}
+        <div
+          className="nav-right"
+          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}
+        >
+          {/* + Ask — remplace visuellement Sign Up (qu’on retire) */}
+          {onAskClick && (
+            <button
+onClick={() => {
+  if (!isLoggedIn) {
+    onLoginClick();            // ouvre ta modale login (comportement actuel)
+    return;
+  }
+  if (onAskClick) {
+    onAskClick();              // si la page a passé une action custom, on la respecte
+  } else {
+    router.push('/ask');       // SINON: fallback par défaut -> aller vers /ask
+  }
+}}
+
+              style={{
+                padding: '8px 16px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: 999,
+                color: 'white',
+                fontSize: 14,
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(102,126,234,0.3)',
+                whiteSpace: 'nowrap',
+              }}
+              aria-label="Ask a question"
+              title="+ Ask"
+            >
+              + Ask
+            </button>
+          )}
+
+          {/* Cloche notifications */}
+          <button
+            aria-label="Notifications"
+            title="Notifications"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              border: '1px solid var(--border)',
+              background: 'var(--card)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              // TODO: ouvrir ton panneau de notifications
+            }}
+          >
+            <Bell size={18} />
+            {notificationsCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 4px',
+                  borderRadius: 999,
+                  background: '#ef4444',
+                  color: '#fff',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid var(--card)',
+                  lineHeight: 1,
+                }}
+              >
+                {notificationsCount > 99 ? '99+' : notificationsCount}
+              </span>
+            )}
+          </button>
+
+          {/* Langues via icône Globe + popover */}
+          <div style={{ position: 'relative' }}>
+            <button
+              ref={langBtnRef}
+              onClick={() => setShowLang((s) => !s)}
+              aria-label="Language"
+              title="Language"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                border: '1px solid var(--border)',
+                background: 'var(--card)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <Globe size={18} />
+            </button>
+
+            {showLang && (
+              <div
+                ref={langMenuRef}
+                style={{
+                  position: 'absolute',
+                  top: 44,
+                  right: 0,
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  padding: 6,
+                  minWidth: 140,
+                  zIndex: 200,
+                }}
+              >
+                {[
+                  { v: 'en', label: 'English' },
+                  { v: 'fr', label: 'Français' },
+                  { v: 'es', label: 'Español' },
+                  { v: 'de', label: 'Deutsch' },
+                  { v: 'it', label: 'Italiano' },
+                  { v: 'pt', label: 'Português' },
+                ].map((item) => (
+                  <button
+                    key={item.v}
+                    onClick={() => onLang(item.v)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: lang === item.v ? 'var(--pill)' : 'transparent',
+                      color: 'var(--text)',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    {lang === item.v ? <ChevronDown size={14} style={{ transform: 'rotate(-90deg)' }} /> : null}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Theme (icône seule) */}
+          <button
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            title="Toggle theme"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              border: '1px solid var(--border)',
+              background: 'var(--card)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+
+          {/* Auth */}
+          {!isLoggedIn ? (
+            !isMobile && (
+              <button
+                onClick={onLoginClick}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'transparent',
+                  border: '2px solid #667eea',
+                  borderRadius: 999,
+                  color: '#667eea',
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                Log in
+              </button>
+            )
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                paddingLeft: 4,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 12px',
+                  backgroundColor: 'var(--bg)',
+                  borderRadius: 24,
+                  cursor: 'pointer',
+                }}
+                title="Account"
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {username?.[0]?.toUpperCase() || 'U'}
+                </div>
+                {!isMobile && (
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>
+                    {username}
+                  </span>
                 )}
+                <ChevronDown size={16} />
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </nav>
-  )
+    </header>
+  );
 }
