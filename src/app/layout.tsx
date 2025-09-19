@@ -9,58 +9,67 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-theme-ready="false" suppressHydrationWarning>
       <head>
         <meta name="color-scheme" content="dark light" />
-        
+
         {/* BLOCKING script - executes BEFORE any rendering */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function () {
+                var root = document.documentElement;
                 try {
-                  // Get theme immediately
-                  var stored = localStorage.getItem('theme');
-                  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  var theme = stored || (prefersDark ? 'dark' : 'light');
-                  
-                  var root = document.documentElement;
-                  
-                  // Apply theme class and CSS variables IMMEDIATELY
-                  if (theme === 'dark') {
-                    root.classList.add('dark');
-                    root.setAttribute('data-theme', 'dark');
-                    // Set ALL CSS variables for dark mode
-                    root.style.setProperty('--bg', '#0b0f14');
-                    root.style.setProperty('--text', '#E6EEF6');
-                    root.style.setProperty('--muted', '#9FB2C7');
-                    root.style.setProperty('--card', '#10161d');
-                    root.style.setProperty('--border', '#1d2731');
-                    root.style.setProperty('--pill', '#0f141a');
-                    root.style.setProperty('--pillHover', '#16202a');
-                  } else {
-                    root.classList.remove('dark');
-                    root.setAttribute('data-theme', 'light');
-                    // Set ALL CSS variables for light mode
-                    root.style.setProperty('--bg', '#F7F9FA');
-                    root.style.setProperty('--text', '#1a1a1a');
-                    root.style.setProperty('--muted', '#536471');
-                    root.style.setProperty('--card', '#ffffff');
-                    root.style.setProperty('--border', '#E1E8ED');
-                    root.style.setProperty('--pill', '#F7F9FA');
-                    root.style.setProperty('--pillHover', '#E1E8ED');
+                  var stored = null;
+                  try { stored = localStorage.getItem('theme'); } catch (_) {}
+                  var prefersDark = false;
+                  try { prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (_) {}
+                  var theme = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
+
+                  var vars = theme === 'dark'
+                    ? [['--bg', '#0b0f14'], ['--text', '#E6EEF6'], ['--muted', '#9FB2C7'], ['--card', '#10161d'], ['--border', '#1d2731'], ['--pill', '#0f141a'], ['--pillHover', '#16202a']]
+                    : [['--bg', '#F7F9FA'], ['--text', '#1a1a1a'], ['--muted', '#536471'], ['--card', '#ffffff'], ['--border', '#E1E8ED'], ['--pill', '#F7F9FA'], ['--pillHover', '#E1E8ED']];
+
+                  for (var i = 0; i < vars.length; i += 1) {
+                    root.style.setProperty(vars[i][0], vars[i][1]);
                   }
-                  root.setAttribute('data-theme-ready','true');
+
+                  root.classList.toggle('dark', theme === 'dark');
+                  root.setAttribute('data-theme', theme);
+                  root.style.backgroundColor = theme === 'dark' ? '#0b0f14' : '#F7F9FA';
+                  root.style.color = theme === 'dark' ? '#E6EEF6' : '#1a1a1a';
                   root.style.colorScheme = theme;
-                } catch (e) {
-                  // Fallback to light mode if anything fails
-                  document.documentElement.style.setProperty('--bg', '#F7F9FA');
+                  try { localStorage.setItem('theme', theme); } catch (_) {}
+                } catch (_) {
+                  var fallbackVars = [['--bg', '#F7F9FA'], ['--text', '#1a1a1a'], ['--muted', '#536471'], ['--card', '#ffffff'], ['--border', '#E1E8ED'], ['--pill', '#F7F9FA'], ['--pillHover', '#E1E8ED']];
+                  for (var j = 0; j < fallbackVars.length; j += 1) {
+                    root.style.setProperty(fallbackVars[j][0], fallbackVars[j][1]);
+                  }
+                  root.classList.remove('dark');
+                  root.setAttribute('data-theme', 'light');
+                  root.style.backgroundColor = '#F7F9FA';
+                  root.style.color = '#1a1a1a';
+                  root.style.colorScheme = 'light';
+                } finally {
+                  root.setAttribute('data-theme-ready', 'true');
                 }
               })();
             `,
           }}
         />
-        
+
+        {/* Hide content until the theme is applied */}
+        <style id="theme-preflight">
+          {`
+            html[data-theme-ready="false"] body {
+              visibility: hidden;
+            }
+          `}
+        </style>
+        <noscript>
+          <style>{`html[data-theme-ready="false"] body { visibility: visible; }`}</style>
+        </noscript>
+
         {/* Prevent transitions during initial load */}
         <style id="disable-transitions">
           {`
