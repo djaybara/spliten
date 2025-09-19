@@ -33,15 +33,23 @@ const slugify = (s: string) =>
 function useThemeBoot() {
   useEffect(() => {
     const el = document.documentElement;
-    let theme = localStorage.getItem('theme');
-    if (!theme) {
-      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    el.setAttribute('data-theme', theme);
+    const prefers = () =>
+      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+    const applyTheme = (value: string | null) => {
+      const next = value === 'dark' || value === 'light' ? value : prefers();
+      el.setAttribute('data-theme', next);
+      el.setAttribute('data-theme-ready', 'true');
+      el.style.colorScheme = next;
+      if (next === 'dark') el.classList.add('dark');
+      else el.classList.remove('dark');
+    };
+
+    // first paint already done by layout.tsx; ensure consistency + listen to changes
+    applyTheme(localStorage.getItem('theme'));
+
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'theme' && e.newValue) {
-        document.documentElement.setAttribute('data-theme', e.newValue);
-      }
+      if (e.key === 'theme') applyTheme(e.newValue);
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
@@ -606,12 +614,16 @@ export default function Home() {
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: palette.text }}>Trending Now</h3>
                 <TrendingUp size={18} color="#667eea" />
               </div>
-              {trendingTopics.map((topic, i) => (
+              {[
+                { topic: 'Climate Policy', change: '+234%', count: '1.2k discussions' },
+                { topic: 'AI Regulation', change: '+89%', count: '892 discussions' },
+                { topic: 'Work-Life Balance', change: '+45%', count: '567 discussions' },
+              ].map((topic, i) => (
                 <div
                   key={i}
                   style={{
                     padding: '12px 0',
-                    borderBottom: i < trendingTopics.length - 1 ? `1px solid ${palette.border}` : 'none',
+                    borderBottom: i < 2 ? `1px solid ${palette.border}` : 'none',
                   }}
                 >
                   <div
@@ -990,10 +1002,10 @@ export default function Home() {
                         alignItems: 'center',
                         gap: 6,
                         padding: '8px 12px',
-                        backgroundColor: active ? palette.chipBgActive : 'transparent',
+                        backgroundColor: active ? 'rgba(102, 126, 234, 0.15)' : 'transparent',
                         border: 'none',
                         borderRadius: 8,
-                        color: active ? palette.chipTextActive : palette.mutetext,
+                        color: active ? '#667eea' : palette.mutetext,
                         fontSize: 13,
                         fontWeight: 800,
                         cursor: 'pointer',
@@ -1053,7 +1065,7 @@ export default function Home() {
 
               <div
                 style={{
-                  backgroundColor: palette.chipBgActive,
+                  backgroundColor: 'rgba(102, 126, 234, 0.15)',
                   borderRadius: 12,
                   padding: 12,
                   marginBottom: 16,
@@ -1061,7 +1073,7 @@ export default function Home() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <Bot size={16} color="#667eea" />
-                  <span style={{ fontSize: 13, fontWeight: 800, color: palette.chipTextActive }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#667eea' }}>
                     AI Assistant
                   </span>
                 </div>
@@ -1073,38 +1085,33 @@ export default function Home() {
                 </p>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
                   style={{
-                    padding: '10px 24px',
-                    backgroundColor: 'transparent',
+                    padding: '10px 14px',
+                    borderRadius: 10,
                     border: `2px solid ${palette.border}`,
-                    borderRadius: 24,
-                    fontSize: 14,
+                    background: 'transparent',
+                    color: palette.text,
                     fontWeight: 800,
                     cursor: 'pointer',
-                    color: palette.subtext,
                   }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={!newQuestion.title.trim()}
                   style={{
-                    padding: '10px 24px',
-                    background: newQuestion.title.trim()
-                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                      : palette.border,
+                    padding: '10px 14px',
+                    borderRadius: 10,
                     border: 'none',
-                    borderRadius: 24,
-                    fontSize: 14,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#fff',
                     fontWeight: 800,
-                    color: newQuestion.title.trim() ? 'white' : palette.mutetext,
-                    cursor: newQuestion.title.trim() ? 'pointer' : 'not-allowed',
-                    boxShadow: newQuestion.title.trim() ? '0 2px 8px rgba(102,126,234,0.3)' : 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(102,126,234,0.3)',
                   }}
                 >
                   Post

@@ -1,57 +1,53 @@
-// middleware.ts (à la racine)
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+// middleware.ts — AUTH SOFT (sans Clerk)
+// Règles :
+// - GET autorisé partout
+// - POST bloqué sur /api/questions* et /api/opinion* si pas "connecté"
+// - En DEV : on considère "connecté" si cookie demo_auth=1
+// - On ignore totalement /_next/*, /public/*, /api/ai/*
 
-// Pages GET protégées (ex: /ask) et API "écriture" protégées
-const PROTECTED_GET_ROUTES = [/^\/ask$/];
-const PROTECTED_WRITE_ROUTES = [
-  { path: /^\/api\/questions$/, methods: ['POST'] },
-  { path: /^\/api\/(opinion|argument)\//, methods: ['POST','PUT','PATCH','DELETE'] },
-];
+import { NextResponse, type NextRequest } from 'next/server';
 
-// Dev-only : on simule l'auth avec un cookie spliten_auth=1
-function isDevAuthed(req: NextRequest) {
-  return req.cookies.get('spliten_auth')?.value === '1';
+const IGNORE = [/^\/_next\//, /^\/public\//, /^\/api\/ai\//];
+const PROTECTED_POST = [/^\/api\/questions(\/.*)?$/, /^\/api\/opinion(\/.*)?$/];
+
+function isIgnored(pathname: string) {
+  return IGNORE.some((re) => re.test(pathname));
 }
 
-export async function middleware(req: NextRequest) {
+function isProtectedPost(method: string, pathname: string) {
+  if (method !== 'POST') return false;
+  return PROTECTED_POST.some((re) => re.test(pathname));
+}
+
+function isDevAuthed(req: NextRequest) {
+  // Bypass dev via cookie demo_auth=1
+  if (process.env.NODE_ENV !== 'development') return false;
+  return req.cookies.get('demo_auth')?.value === '1';
+}
+
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const method = req.method;
+  const method = req.method.toUpperCase();
 
-  const isProtectedGet = PROTECTED_GET_ROUTES.some(rx => rx.test(pathname));
-  const isProtectedWrite = PROTECTED_WRITE_ROUTES.some(
-    rule => rule.path.test(pathname) && rule.methods.includes(method)
-  );
+  // 1) Ignorer assets/IA
+  if (isIgnored(pathname)) return NextResponse.next();
 
-  // Si route protégée et pas "auth" (dev), on bloque
-  if ((isProtectedGet || isProtectedWrite) && !isDevAuthed(req)) {
-    if (pathname.startsWith('/api/')) {
-      // API -> 401 JSON
-      return NextResponse.json({ error: 'AUTH_REQUIRED' }, { status: 401 });
-    }
-    // Page -> redirect home avec un flag
-    const url = req.nextUrl.clone();
-    url.pathname = '/';
-    url.searchParams.set('auth', 'required');
-    return NextResponse.redirect(url);
+  // 2) Autoriser tous les GET partout
+  if (method === 'GET') return NextResponse.next();
+
+  // 3) Sur POST protégés : exiger "auth" (en dev via cookie)
+  if (isProtectedPost(method, pathname)) {
+    if (isDevAuthed(req)) return NextResponse.next();
+    return new NextResponse(
+      JSON.stringify({ ok: false, error: 'Unauthorized (soft auth middleware)' }),
+      { status: 401, headers: { 'content-type': 'application/json' } }
+    );
   }
 
-  // (placeholder Turnstile/rate-limit à activer plus tard)
-  // const token = req.headers.get('x-turnstile-token');
-  // if (isProtectedWrite && !token) {
-  //   return NextResponse.json({ error: 'TURNSTILE_MISSING' }, { status: 400 });
-  // }
-
-  // Sécurité basique
-  const res = NextResponse.next();
-  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  res.headers.set('X-Content-Type-Options', 'nosniff');
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  return res;
+  // 4) Tout le reste passe
+  return NextResponse.next();
 }
 
-// Exclut les assets Next de la middleware (performances)
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: '/:path*',
 };

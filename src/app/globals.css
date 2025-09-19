@@ -7,18 +7,41 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== THEME TOKENS ===== */
-
-
-html, body { 
-  background: var(--bg); 
-  color: var(--text); 
+/* === THEME VARIABLES (ensure they're always defined) === */
+:root {
+  /* Light mode defaults - will be overridden by script if needed */
+  --bg: #F7F9FA;
+  --text: #1a1a1a;
+  --muted: #536471;
+  --card: #ffffff;
+  --border: #E1E8ED;
+  --pill: #F7F9FA;
+  --pillHover: #E1E8ED;
+  
+  /* Layout variables */
+  --nav-h: 64px;
+  --sticky-h: 48px;
+  --stack-gap: 16px;
+  --sticky-bg: var(--card);
 }
 
-/* If you used inline styles, this helps cards look OK in dark too */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
+/* Dark mode - applied when .dark class is present */
+:root.dark {
+  --bg: #0b0f14;
+  --text: #E6EEF6;
+  --muted: #9FB2C7;
+  --card: #10161d;
+  --border: #1d2731;
+  --pill: #0f141a;
+  --pillHover: #16202a;
+}
+
+/* Base styles using variables */
+html, body { 
+  background: var(--bg); 
+  color: var(--text);
+  /* Ensure smooth transitions only after initial load */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* === Reset global === */
@@ -37,7 +60,12 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.5;
   min-height: 100vh;
-  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Card styling with theme variables */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
 }
 
 /* === Scrollbar personnalisée === */
@@ -60,8 +88,19 @@ body {
   opacity: 0.5;
 }
 
-/* Utility classes */
+/* === UTILITY CLASSES === */
+
+/* Layout */
 .min-h-screen { min-height: 100vh; }
+
+/* Colors that work with theme variables */
+.bg-app { background-color: var(--bg); }
+.bg-card { background-color: var(--card); }
+.text-primary { color: var(--text); }
+.text-muted { color: var(--muted); }
+.border-default { border-color: var(--border); }
+
+/* Static utility classes (keep your existing ones) */
 .bg-gray-50 { background-color: #f9fafb; }
 .bg-white { background-color: white; }
 .bg-gray-100 { background-color: #f3f4f6; }
@@ -298,6 +337,8 @@ body {
 
 /* Custom components */
 .last\:border-0:last-child { border: 0; }
+.clickable { cursor: pointer; }
+.nav-right button, .nav-right a { white-space: nowrap; }
 
 /* Gradients */
 .bg-gradient-to-r {
@@ -310,38 +351,3 @@ body {
 .to-red-100 { --tw-gradient-to: #fee2e2; }
 .from-green-500 { --tw-gradient-from: #22c55e; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
 .to-green-400 { --tw-gradient-to: #4ade80; }
-
-/* === THEME VARIABLES === */
-:root{
-  --bg: #F7F9FA;
-  --text: #1a1a1a;
-  --muted: #536471;
-  --card: #ffffff;
-  --border: #E1E8ED;
-  --pill: #F7F9FA;
-  --pillHover: #E1E8ED;
-}
-
-:root.dark{
-  --bg: #0b0f14;
-  --text: #E6EEF6;
-  --muted: #9FB2C7;
-  --card: #10161d;
-  --border: #1d2731;
-  --pill: #0f141a;
-  --pillHover: #16202a;
-}
-
-/* Base */
-html, body { background: var(--bg); color: var(--text); }
-
-/* === Cursor for any clickable UI === */
-.clickable { cursor: pointer; }
-.nav-right button, .nav-right a { white-space: nowrap; }
-
-:root {
-  --nav-h: 64px;      /* hauteur navbar réelle */
-  --sticky-h: 48px;   /* hauteur visuelle onglets/bouton */
-  --stack-gap: 16px;  /* écart sous les éléments sticky */
-  --sticky-bg: var(--card); /* fond OPAQUE de la plaque (suit le thème) */
-}

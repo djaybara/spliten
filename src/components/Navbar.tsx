@@ -39,9 +39,12 @@ export default function Navbar({
 }: NavbarProps) {
   /* ================= THEME ================= */
   const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme);
+
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
+    root.setAttribute('data-theme-ready', 'true'); // <- ajouté
+    root.style.colorScheme = theme;                // <- ajouté
     if (theme === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');
     localStorage.setItem('theme', theme);
@@ -69,10 +72,7 @@ export default function Navbar({
     function onDocClick(e: MouseEvent) {
       const t = e.target as Node;
       if (!langMenuRef.current || !langBtnRef.current) return;
-      if (
-        !langMenuRef.current.contains(t) &&
-        !langBtnRef.current.contains(t)
-      ) {
+      if (!langMenuRef.current.contains(t) && !langBtnRef.current.contains(t)) {
         setShowLang(false);
       }
     }
@@ -136,7 +136,7 @@ export default function Navbar({
           )}
         </Link>
 
-        {/* Barre de recherche – centrée (max 640 = largeur colonne centrale) */}
+        {/* Barre de recherche */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <div style={{ position: 'relative', width: '100%', maxWidth: 640 }}>
             <Search
@@ -184,21 +184,17 @@ export default function Navbar({
           className="nav-right"
           style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}
         >
-          {/* + Ask — remplace visuellement Sign Up (qu’on retire) */}
+          {/* + Ask */}
           {onAskClick && (
             <button
-onClick={() => {
-  if (!isLoggedIn) {
-    onLoginClick();            // ouvre ta modale login (comportement actuel)
-    return;
-  }
-  if (onAskClick) {
-    onAskClick();              // si la page a passé une action custom, on la respecte
-  } else {
-    router.push('/ask');       // SINON: fallback par défaut -> aller vers /ask
-  }
-}}
-
+              onClick={() => {
+                if (!isLoggedIn) {
+                  onLoginClick();
+                  return;
+                }
+                if (onAskClick) onAskClick();
+                else router.push('/ask');
+              }}
               style={{
                 padding: '8px 16px',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -233,9 +229,6 @@ onClick={() => {
               justifyContent: 'center',
               position: 'relative',
               cursor: 'pointer',
-            }}
-            onClick={() => {
-              // TODO: ouvrir ton panneau de notifications
             }}
           >
             <Bell size={18} />
