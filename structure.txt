@@ -1,0 +1,192 @@
+.
+├── AGENTS.md
+├── AI-INSIGHTS-GUIDE.md
+├── Contributing.md
+├── README.md
+├── clear-cache.js
+├── eslint.config.mjs
+├── middleware.ts
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── postcss.config.mjs.backup
+├── prisma
+│   ├── migrations
+│   │   ├── 20250914121745_init
+│   │   │   └── migration.sql
+│   │   ├── 20250923151135_add_user_role
+│   │   │   └── migration.sql
+│   │   ├── 20250927091333_spliten
+│   │   │   └── migration.sql
+│   │   ├── 20250930113512_add_question_votes
+│   │   │   └── migration.sql
+│   │   ├── 20251006110523_add_ai_insights
+│   │   │   └── migration.sql
+│   │   ├── 20251008082252_add_ai_insight
+│   │   │   └── migration.sql
+│   │   ├── 20251016135430_add_format_and_improve_insights
+│   │   │   └── migration.sql
+│   │   └── migration_lock.toml
+│   ├── schema.prisma
+│   ├── seed copy.ts
+│   ├── seed-data.ts
+│   └── seed.ts
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── vercel.svg
+│   └── window.svg
+├── scripts
+│   ├── cleanup-cache-force.ts
+│   ├── cleanup-cache-simple.ts
+│   ├── cleanup-cache.ts
+│   ├── cleanup-insights-cache.sql
+│   ├── debug-insights.ts
+│   ├── debug-prisma.sh
+│   ├── insights-monitoring.ts
+│   ├── regenerate-all-insights.ts
+│   └── seed.ts
+├── src
+│   ├── app
+│   │   ├── HomeClient.tsx
+│   │   ├── api
+│   │   │   ├── ai
+│   │   │   │   └── insights
+│   │   │   │       └── route.ts
+│   │   │   ├── arguments
+│   │   │   │   └── [id]
+│   │   │   │       ├── reply
+│   │   │   │       │   └── route.ts
+│   │   │   │       └── vote
+│   │   │   │           └── route.ts
+│   │   │   ├── comments
+│   │   │   │   └── count
+│   │   │   │       └── route.ts
+│   │   │   ├── discussions
+│   │   │   │   └── post
+│   │   │   │       └── route.ts
+│   │   │   ├── ok
+│   │   │   │   └── route.ts
+│   │   │   ├── opinions
+│   │   │   │   ├── add
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── reply
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── score
+│   │   │   │       └── route.ts
+│   │   │   ├── prisma
+│   │   │   │   └── ok
+│   │   │   │       ├── route.ts
+│   │   │   │       └── routee.ts
+│   │   │   └── questions
+│   │   │       ├── [id]
+│   │   │       │   ├── route.ts
+│   │   │       │   └── vote
+│   │   │       │       └── route.ts
+│   │   │       ├── route.ts
+│   │   │       └── similar
+│   │   │           └── route.ts
+│   │   ├── ask
+│   │   │   └── page.tsx
+│   │   ├── favicon.ico
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── legal
+│   │   │   ├── cookies
+│   │   │   │   └── page.tsx
+│   │   │   ├── privacy
+│   │   │   │   └── page.tsx
+│   │   │   └── terms
+│   │   │       └── page.tsx
+│   │   ├── middleware.off.ts
+│   │   ├── page.tsx
+│   │   ├── popular
+│   │   │   └── page.tsx
+│   │   ├── providers.tsx
+│   │   ├── questions
+│   │   │   └── [slug]
+│   │   │       ├── ClientInteractive.tsx
+│   │   │       ├── ClientQuestion.tsx
+│   │   │       ├── loading.tsx
+│   │   │       └── page.tsx
+│   │   ├── robots.ts
+│   │   ├── sign-in
+│   │   │   └── [[...sign-in]]
+│   │   │       └── page.tsx
+│   │   ├── sign-up
+│   │   │   └── [[...sign-up]]
+│   │   │       └── page.tsx
+│   │   └── sitemap.ts
+│   ├── components
+│   │   ├── AIInsightsCard.tsx
+│   │   ├── AIInsightsSiteCard.tsx
+│   │   ├── AISiteSkeleton.tsx
+│   │   ├── AISkeleton.tsx
+│   │   ├── ArgumentTimeline.tsx
+│   │   ├── ArgumentsColumn.tsx
+│   │   ├── BiasLensCard.tsx
+│   │   ├── CategoriesPanel.tsx
+│   │   ├── ConvictionTest.tsx
+│   │   ├── CreatePostStickyButton.tsx
+│   │   ├── DebateDuel.tsx
+│   │   ├── DiscussionThread.tsx
+│   │   ├── ExplainBothSides.tsx
+│   │   ├── ExplainToKid.tsx
+│   │   ├── FactCheckPanel.tsx
+│   │   ├── FollowButton.tsx
+│   │   ├── HomeInsights.tsx
+│   │   ├── HomeModals.tsx
+│   │   ├── LeftSidebar.tsx
+│   │   ├── MiniPoll.tsx
+│   │   ├── Navbar.tsx
+│   │   ├── NewsBar.tsx
+│   │   ├── OpinionTimeline.tsx
+│   │   ├── QuestionCard.tsx
+│   │   ├── RatioBar.tsx
+│   │   ├── RightSidebar.tsx
+│   │   ├── SortTabs.tsx
+│   │   ├── SourceBoard.tsx
+│   │   ├── SourceHeatmap.tsx
+│   │   ├── SourcePills.tsx
+│   │   ├── StickyBackplate.tsx
+│   │   ├── StickyCategories.tsx
+│   │   ├── StickyEnvelope.tsx
+│   │   ├── ThemeIcon.tsx
+│   │   ├── ThemeProvider.tsx
+│   │   └── ThemeToggle.tsx
+│   ├── contexts
+│   │   └── LanguageContext.tsx
+│   ├── data
+│   │   ├── categories.ts
+│   │   ├── mockData.ts
+│   │   ├── questionsData.ts
+│   │   ├── questionsIndex.ts
+│   │   └── siteInsights.ts
+│   ├── lib
+│   │   ├── api.ts
+│   │   ├── authSoft.ts
+│   │   ├── categories.ts
+│   │   ├── clerkSafe.tsx
+│   │   ├── clerkSafeServer.tsx
+│   │   ├── i18n
+│   │   │   ├── insights.ts
+│   │   │   └── translations.ts
+│   │   ├── openai.ts
+│   │   ├── prisma.ts
+│   │   ├── rate.ts
+│   │   ├── translation.ts
+│   │   ├── turnstile.ts
+│   │   └── utils
+│   │       └── url.ts
+│   ├── middleware.off.ts
+│   └── server
+│       └── queries
+│           └── questions.ts
+├── structure.txt
+├── tailwind.config.ts
+└── tsconfig.json
+
+56 directories, 134 files

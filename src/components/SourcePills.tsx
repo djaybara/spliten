@@ -1,18 +1,22 @@
 // src/components/SourcePills.tsx
 'use client';
-
 import React from 'react';
-import { faviconUrl, faviconSrcSet, siteLabel, normalizeUrl } from '@/lib/utils/url';
 
 type Item = { url: string; label?: string };
-export default function SourcePills({ list }: { list: Item[] }) {
-  if (!list?.length) return null;
+
+export default function SourcePills({ list, sources }: { list?: Item[]; sources?: Item[] }) {
+  const data = ((sources || list) ?? [])
+    .map((s) => ({ url: normalizeUrlLocal(s.url), label: s.label }))
+    .filter((s) => !!s.url);
+
+  if (!data.length) return null;
 
   return (
-    <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-      {list.map((it, i) => {
-        const href = normalizeUrl(it.url) || it.url;
-        const label = it.label || siteLabel(href);
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      {data.map((s, i) => {
+        const { host, href } = extractHost(s.url);
+        const display = s.label || siteNiceName(host); // <-- NOM DE SITE lisible
+        const fav = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
         return (
           <a
             key={i}
@@ -21,28 +25,95 @@ export default function SourcePills({ list }: { list: Item[] }) {
             rel="noopener noreferrer"
             className="clickable"
             style={{
-              display:'inline-flex', alignItems:'center', gap:8,
-              padding:'6px 10px',
-              background:'var(--pill)', border:'1px solid var(--border)',
-              borderRadius:999, color:'var(--text)', textDecoration:'none',
-              lineHeight:1
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 10px',
+              background: 'var(--pill)',
+              border: '1px solid var(--border)',
+              borderRadius: 999,
+              color: 'var(--text)',
+              textDecoration: 'none',
+              lineHeight: 1,
             }}
+            title={href}
           >
-            {/* Image 16px visuel mais fournie en 2x → net */}
             <img
-              src={faviconUrl(href, 32)}         // ← 32px généré pour écran retina
-              srcSet={faviconSrcSet(href, 16)}   // ← 1x/2x
+              src={fav}
               width={16}
               height={16}
               alt=""
-              style={{ display:'block', borderRadius:4, imageRendering:'-webkit-optimize-contrast' }}
+              style={{ display: 'block', borderRadius: 4 }}
               loading="lazy"
               decoding="async"
             />
-            <span style={{ fontSize:12, fontWeight:600 }}>{label}</span>
+            <span style={{ fontSize: 12, fontWeight: 700 }}>{display}</span>
           </a>
         );
       })}
     </div>
   );
+}
+
+function normalizeUrlLocal(u?: string) {
+  if (!u) return '';
+  return /^https?:\/\//i.test(u) ? u : `https://${u}`;
+}
+function extractHost(u: string) {
+  try {
+    const p = new URL(u);
+    return { host: stripWww(p.hostname), href: p.href };
+  } catch {
+    const fixed = normalizeUrlLocal(u);
+    try {
+      const p2 = new URL(fixed);
+      return { host: stripWww(p2.hostname), href: p2.href };
+    } catch {
+      return { host: stripWww(u.replace(/^https?:\/\//i, '')), href: fixed };
+    }
+  }
+}
+function stripWww(h: string) {
+  return h.replace(/^www\./i, '');
+}
+
+/** Nom de site "propre" : mapping pour les plus fréquents + fallback basé sur le domaine. */
+function siteNiceName(host: string) {
+  const map: Record<string, string> = {
+    'wikipedia.org': 'Wikipedia',
+    'reuters.com': 'Reuters',
+    'ft.com': 'Financial Times',
+    'bbc.com': 'BBC',
+    'bbc.co.uk': 'BBC',
+    'nytimes.com': 'NYTimes',
+    'theguardian.com': 'The Guardian',
+    'washingtonpost.com': 'Washington Post',
+    'who.int': 'WHO',
+    'un.org': 'United Nations',
+    'ec.europa.eu': 'European Commission',
+    'oecd.org': 'OECD',
+    'worldbank.org': 'World Bank',
+    'imf.org': 'IMF',
+    'nature.com': 'Nature',
+    'science.org': 'Science',
+    'ieee.org': 'IEEE',
+    'arxiv.org': 'arXiv',
+    'world-nuclear.org': 'World Nuclear',
+    'iaea.org': 'IAEA',
+    'news.google.com': 'Google News',
+    'medium.com': 'Medium',
+    'substack.com': 'Substack',
+    'ycombinator.com': 'Y Combinator',
+    'techcrunch.com': 'TechCrunch',
+  };
+  if (map[host]) return map[host];
+
+  // Fallback: enlève TLD et capitalise (ex: ft.com -> FT, vox.com -> Vox)
+  const parts = host.split('.');
+  if (parts.length >= 2) {
+    const core = parts[parts.length - 2];
+    if (core.length <= 3) return core.toUpperCase();
+    return core.charAt(0).toUpperCase() + core.slice(1);
+  }
+  return host;
 }

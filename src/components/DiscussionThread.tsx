@@ -13,7 +13,31 @@ export type UIDiscussion = {
   likes: number;
   replies: number;
   sources?: SourceLink[];
+  // tolérance : autres clés possibles
+  sourceLinks?: SourceLink[];
+  links?: ({ url: string } | string)[];
+  refs?: ({ url: string } | string)[];
 };
+
+/* ===== Helpers : normalisation & fallback multi-clés ===== */
+function normalizeHttp(u?: string) {
+  if (!u) return '';
+  return /^https?:\/\//i.test(u) ? u : `https://${u}`;
+}
+function pickSourcesAny(maybe: any): SourceLink[] {
+  if (!maybe) return [];
+  const arr =
+    (Array.isArray(maybe.sources) ? maybe.sources : null) ??
+    (Array.isArray(maybe.sourceLinks) ? maybe.sourceLinks : null) ??
+    (Array.isArray(maybe.links) ? maybe.links : null) ??
+    (Array.isArray(maybe.refs) ? maybe.refs : null) ??
+    [];
+  return (arr as any[])
+    .map((x) => (typeof x === 'string' ? { url: x } : x))
+    .filter((x) => x && typeof x.url === 'string')
+    .map((x) => ({ url: normalizeHttp(x.url) }))
+    .filter((x) => !!x.url);
+}
 
 export default function DiscussionThread({
   discussions,
@@ -51,7 +75,7 @@ export default function DiscussionThread({
           <button
             onClick={() => {
               if (!text.trim()) return;
-              onPost(text.trim(), src.trim() ? [{ url: src.trim() }] : undefined);
+              onPost(text.trim(), src.trim() ? [{ url: normalizeHttp(src.trim()) }] : undefined);
               setText('');
               setSrc('');
             }}
@@ -64,42 +88,45 @@ export default function DiscussionThread({
       </div>
 
       <div className="space-y-3">
-        {discussions.map((d) => (
-          <div key={d.id} className="border-b pb-3 last:border-0" style={{ borderColor: 'var(--border)' }}>
-            <div className="text-xs" style={{ color: 'var(--muted)', marginBottom: 4 }}>
-              <span className="font-medium" style={{ color: 'var(--text)' }}>
-                {d.author}
-              </span>
-              <span className="mx-1">•</span>
-              <span>{d.timeAgo}</span>
-            </div>
-            <p className="text-sm" style={{ color: 'var(--text)', marginBottom: 8 }}>
-              {d.text}
-            </p>
-
-            {d.sources && d.sources.length > 0 && (
-              <div style={{ marginBottom: 8 }}>
-                <SourcePills list={d.sources} />
+        {discussions.map((d) => {
+          const dSources = pickSourcesAny(d); // <-- NOUVEAU
+          return (
+            <div key={d.id} className="border-b pb-3 last:border-0" style={{ borderColor: 'var(--border)' }}>
+              <div className="text-xs" style={{ color: 'var(--muted)', marginBottom: 4 }}>
+                <span className="font-medium" style={{ color: 'var(--text)' }}>
+                  {d.author}
+                </span>
+                <span className="mx-1">•</span>
+                <span>{d.timeAgo}</span>
               </div>
-            )}
+              <p className="text-sm" style={{ color: 'var(--text)', marginBottom: 8 }}>
+                {d.text}
+              </p>
 
-            <div className="flex items-center space-x-4 text-xs" style={{ color: 'var(--muted)' }}>
-              <button className="flex items-center space-x-1 clickable" style={{ color: 'var(--text)' }} onClick={() => alert('Replies modal (TODO DB)')}>
-                <MessageSquare size={12} />
-                <span>{d.replies} replies</span>
-              </button>
-              <button
-                className="flex items-center space-x-1 clickable"
-                style={{ color: 'var(--text)' }}
-                onClick={() => alert('Thanks for reporting — queued for review.')}
-                title="Report"
-              >
-                <Flag size={12} />
-                <span>Report</span>
-              </button>
+              {dSources.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <SourcePills sources={dSources} />
+                </div>
+              )}
+
+              <div className="flex items-center space-x-4 text-xs" style={{ color: 'var(--muted)' }}>
+                <button className="flex items-center space-x-1 clickable" style={{ color: 'var(--text)' }} onClick={() => alert('Replies modal (TODO DB)')}>
+                  <MessageSquare size={12} />
+                  <span>{d.replies} replies</span>
+                </button>
+                <button
+                  className="flex items-center space-x-1 clickable"
+                  style={{ color: 'var(--text)' }}
+                  onClick={() => alert('Thanks for reporting — queued for review.')}
+                  title="Report"
+                >
+                  <Flag size={12} />
+                  <span>Report</span>
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

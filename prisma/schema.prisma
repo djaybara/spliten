@@ -1,32 +1,247 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
+/// *
+///  * ===== ENUMS =====
+enum PostFormat {
+  BINARY
+  // POLL      // Phase 2
+  // DISCUSSION // Phase 2
+  // SCALE     // Phase 2
+}
+
+enum Role {
+  USER
+  MOD
+  ADMIN
+}
+
+enum QuestionStatus {
+  PUBLISHED
+  DRAFT
+  LOCKED
+  HIDDEN
+}
+
+enum Side {
+  pour
+  contre
+}
+
+enum VoteType {
+  up
+  down
+}
+
+/// *
+///  * ===== Utilisateurs =====
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  username  String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  questions Question[]
+  id            String         @id @default(cuid())
+  email         String         @unique
+  username      String         @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  avatarUrl     String?
+  role          Role           @default(USER)
+  arguments     Argument[]
+  argumentVotes ArgumentVote[]
+  discussions   Discussion[]
+  questions     Question[]
+  questionVotes QuestionVote[]
+  reportsFiled  Report[]       @relation("UserReportsFiled")
 }
 
+/// *
+///  * ===== Questions =====
 model Question {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  title     String
-  labelA    String   @default("Yes")
-  labelB    String   @default("No")
-  category  String   @default("general")
-  mediaUrl  String?
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String         @id @default(cuid())
+  slug                String         @unique
+  title               String
+  labelA              String         @default("Yes")
+  labelB              String         @default("No")
+  category            String         @default("general")
+  mediaUrl            String?
+  authorId            String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  argumentsACount     Int            @default(0)
+  argumentsBCount     Int            @default(0)
+  argumentsCount      Int            @default(0)
+  badges              String[]
+  controversyScore    Float          @default(0)
+  dedupeHash          String?        @unique
+  description         String         @default("")
+  format              PostFormat     @default(BINARY)  // ✅ NOUVEAU
+  discussionsCount    Int            @default(0)
+  downvotesCount      Int            @default(0)
+  language            String?
+  lastActivityAt      DateTime?
+  status              QuestionStatus @default(PUBLISHED)
+  trendScore          Float          @default(0)
+  upvotesCount        Int            @default(0)
+  viewsCount          Int            @default(0)
+  votesACount         Int            @default(0)
+  votesBCount         Int            @default(0)
+  wilsonScore         Float          @default(0)
+  aiInsights          Json?          @default("{}")
+  aiInsightsUpdatedAt DateTime?
+  aiInsight           AiInsight?
+  arguments           Argument[]
+  discussions         Discussion[]
+  author              User           @relation(fields: [authorId], references: [id])
+  tags                QuestionTag[]
+  votes               QuestionVote[]
+  sources             SourceLink[]
+
+  @@index([authorId])
+  @@index([category])
+  @@index([createdAt])
+  @@index([lastActivityAt])
+}
+
+/// *
+///  * ===== Votes sur questions =====
+model QuestionVote {
+  id         String   @id @default(cuid())
+  questionId String
+  userId     String
+  side       Side
+  createdAt  DateTime @default(now())
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, userId])
+  @@index([questionId])
+}
+
+/// *
+///  * ===== Arguments (A/B) + replies =====
+model Argument {
+  id         String         @id @default(cuid())
+  questionId String
+  authorId   String
+  parentId   String?
+  side       Side
+  text       String
+  votes      Int            @default(0)
+  views      Int            @default(0)
+  isMasked   Boolean        @default(false)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  deletedAt  DateTime?
+  author     User           @relation(fields: [authorId], references: [id])
+  parent     Argument?      @relation("ArgReplies", fields: [parentId], references: [id])
+  replies    Argument[]     @relation("ArgReplies")
+  question   Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  votesList  ArgumentVote[]
+  sources    SourceLink[]
+
+  @@index([questionId, side])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+/// *
+///  * ===== Votes sur arguments =====
+model ArgumentVote {
+  id         String   @id @default(cuid())
+  argumentId String
+  userId     String
+  type       VoteType
+  createdAt  DateTime @default(now())
+  argument   Argument @relation(fields: [argumentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([argumentId, userId])
+}
+
+/// *
+///  * ===== Discussions =====
+model Discussion {
+  id         String       @id @default(cuid())
+  questionId String
+  authorId   String
+  text       String
+  likes      Int          @default(0)
+  replies    Int          @default(0)
+  isMasked   Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  deletedAt  DateTime?
+  author     User         @relation(fields: [authorId], references: [id])
+  question   Question     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  sources    SourceLink[]
+
+  @@index([questionId])
+  @@index([createdAt])
+}
+
+/// *
+///  * ===== Sources (URL) =====
+model SourceLink {
+  id           String      @id @default(cuid())
+  url          String
+  questionId   String?
+  argumentId   String?
+  discussionId String?
+  createdAt    DateTime    @default(now())
+  argument     Argument?   @relation(fields: [argumentId], references: [id], onDelete: Cascade)
+  discussion   Discussion? @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  question     Question?   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@index([argumentId])
+  @@index([discussionId])
+}
+
+/// *
+///  * ===== Tags =====
+model Tag {
+  id   String        @id @default(cuid())
+  name String        @unique
+  qs   QuestionTag[]
+}
+
+model QuestionTag {
+  id         String   @id @default(cuid())
+  questionId String
+  tagId      String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, tagId])
+}
+
+/// *
+///  * ===== Reports =====
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String
+  targetType String
+  targetId   String
+  reason     String
+  createdAt  DateTime @default(now())
+  reporter   User     @relation("UserReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId])
+}
+
+/// *
+///  * ===== AI Insights =====
+model AiInsight {
+  id                  String   @id @default(cuid())
+  questionId          String   @unique
+  data                Json
+  generationTrigger   String?  // "initial" | "votes_threshold" | "arguments_threshold" | "manual"
+  votesAtGeneration   Int      @default(0)  // Pour tracker quand régénérer
+  argsAtGeneration    Int      @default(0)  // Pour tracker quand régénérer
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  question            Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }

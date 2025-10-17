@@ -10,6 +10,11 @@ import {
 import { getCategoryMeta } from '@/lib/categories';
 import SourcePills from '@/components/SourcePills';
 
+// Normalise les URLs (ajoute https:// si manquant)
+const fixSources = (arr?: { url: string }[]) =>
+  (arr || []).map(s => ({ url: /^https?:\/\//i.test(s.url) ? s.url : `https://${s.url}` }));
+
+
 type Badge = 'trending' | 'controversial' | 'new' | 'top';
 type VoteSide = 'pour' | 'contre';
 
@@ -129,7 +134,7 @@ export default function QuestionCard(props: QuestionCardProps) {
             <span style={{ width: 8, height: 8, borderRadius: 999, background: '#10b981', border: '1px solid #065f46' }}/>
             <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>Sources for this question</span>
           </div>
-          <SourcePills list={sources}/>
+          <SourcePills list={fixSources(sources)}/>
         </div>
       )}
 

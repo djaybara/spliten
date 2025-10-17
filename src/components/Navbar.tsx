@@ -1,9 +1,11 @@
 'use client';
 
-import { useRouter } from 'next/navigation'; // AJOUTER
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Search, Moon, Sun, Bell, Globe, ChevronDown } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LANGUAGES, type SupportedLanguage } from '@/lib/i18n/translations';
 
 type NavbarProps = {
   isMobile: boolean;
@@ -12,18 +14,31 @@ type NavbarProps = {
   searchQuery: string;
   onSearchChange: (v: string) => void;
   onLoginClick: () => void;
-  onSignupClick: () => void; // gardé pour compat, non affiché
+  onSignupClick: () => void;
   onAskClick?: () => void;
-  notificationsCount?: number; // optionnel pour la cloche
+  notificationsCount?: number;
 };
 
-/** retourne le thème initial SANS glitch d’icône */
 function getInitialTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light';
   const saved = localStorage.getItem('theme');
-  if (saved === 'light' || saved === 'dark') return saved;
+  if (saved === 'light' || saved === 'dark') return saved as 'light' | 'dark';
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
   return prefersDark ? 'dark' : 'light';
+}
+
+function ThemeIcon({ size = 16 }: { size?: number }) {
+  return (
+    <span
+      className="theme-icon inline-flex items-center justify-center"
+      aria-hidden="true"
+      suppressHydrationWarning
+      style={{ width: size, height: size }}
+    >
+      <span data-sun><Sun width={size} height={size} /></span>
+      <span data-moon><Moon width={size} height={size} /></span>
+    </span>
+  );
 }
 
 export default function Navbar({
@@ -33,7 +48,7 @@ export default function Navbar({
   searchQuery,
   onSearchChange,
   onLoginClick,
-  onSignupClick, // non rendu
+  onSignupClick,
   onAskClick,
   notificationsCount = 0,
 }: NavbarProps) {
@@ -43,36 +58,32 @@ export default function Navbar({
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
-    root.setAttribute('data-theme-ready', 'true'); // <- ajouté
-    root.style.colorScheme = theme;                // <- ajouté
+    root.style.colorScheme = theme as any;
     if (theme === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');
-    localStorage.setItem('theme', theme);
+    try { localStorage.setItem('theme', theme); } catch {}
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
-  const router = useRouter(); // AJOUTER
+  const router = useRouter();
 
-  /* ================ LANG MENU ================ */
-  const [lang, setLang] = useState<string>(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('lang') || 'en' : 'en'
-  );
+  /* ================ LANG MENU (Context) ================ */
+  const { language, setLanguage, t } = useLanguage();
   const [showLang, setShowLang] = useState(false);
   const langBtnRef = useRef<HTMLButtonElement | null>(null);
   const langMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const onLang = (v: string) => {
-    setLang(v);
-    localStorage.setItem('lang', v);
+  const onLang = (v: SupportedLanguage) => {
+    setLanguage(v);
     setShowLang(false);
   };
 
-  // fermer le menu en cliquant en dehors
+  // Fermer le menu en cliquant en dehors
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      const t = e.target as Node;
+      const target = e.target as Node;
       if (!langMenuRef.current || !langBtnRef.current) return;
-      if (!langMenuRef.current.contains(t) && !langBtnRef.current.contains(t)) {
+      if (!langMenuRef.current.contains(target) && !langBtnRef.current.contains(target)) {
         setShowLang(false);
       }
     }
@@ -103,7 +114,7 @@ export default function Navbar({
           gap: 20,
         }}
       >
-        {/* Logo Spliten */}
+        {/* Logo Spliten - LARGEUR FIXE */}
         <Link
           href="/"
           style={{
@@ -111,6 +122,8 @@ export default function Navbar({
             alignItems: 'center',
             gap: 8,
             textDecoration: 'none',
+            flexShrink: 0, // ← Ne rétrécit jamais
+            width: isMobile ? 36 : 130, // ← Largeur fixe
           }}
         >
           <div
@@ -137,7 +150,7 @@ export default function Navbar({
         </Link>
 
         {/* Barre de recherche */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', minWidth: 0 }}>
           <div style={{ position: 'relative', width: '100%', maxWidth: 640 }}>
             <Search
               style={{
@@ -153,7 +166,7 @@ export default function Navbar({
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={isMobile ? 'Search...' : 'Search questions, topics, or categories'}
+              placeholder={isMobile ? t.search || 'Search...' : t.searchPlaceholder || 'Search questions, topics, or categories'}
               style={{
                 width: '100%',
                 padding: '10px 14px 10px 42px',
@@ -182,9 +195,14 @@ export default function Navbar({
         {/* Actions à droite */}
         <div
           className="nav-right"
-          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 10,
+            minWidth: 'fit-content', // ← Empêche le shrink
+          }}
         >
-          {/* + Ask */}
+          {/* + Ask - TRADUIT */}
           {onAskClick && (
             <button
               onClick={() => {
@@ -197,6 +215,8 @@ export default function Navbar({
               }}
               style={{
                 padding: '8px 16px',
+                minWidth: 110, // ← Augmenté pour le texte le plus long
+                textAlign: 'center',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 border: 'none',
                 borderRadius: 999,
@@ -207,17 +227,23 @@ export default function Navbar({
                 boxShadow: '0 2px 8px rgba(102,126,234,0.3)',
                 whiteSpace: 'nowrap',
               }}
-              aria-label="Ask a question"
-              title="+ Ask"
+              aria-label={t.askQuestion}
+              title={t.askQuestion}
             >
-              + Ask
+              {/* Affiche "+ Ask" en anglais, "+ Poser" en français, etc. */}
+              {language === 'en' ? '+ Ask' : 
+               language === 'fr' ? '+ Poser' :
+               language === 'es' ? '+ Preguntar' :
+               language === 'de' ? '+ Fragen' :
+               language === 'it' ? '+ Chiedi' :
+               language === 'pt' ? '+ Perguntar' : '+ Ask'}
             </button>
           )}
 
           {/* Cloche notifications */}
           <button
-            aria-label="Notifications"
-            title="Notifications"
+            aria-label={t.notifications || "Notifications"}
+            title={t.notifications || "Notifications"}
             style={{
               width: 36,
               height: 36,
@@ -258,26 +284,28 @@ export default function Navbar({
             )}
           </button>
 
-          {/* Langues via icône Globe + popover */}
+          {/* Langues avec DRAPEAUX - AMÉLIORÉ */}
           <div style={{ position: 'relative' }}>
             <button
               ref={langBtnRef}
               onClick={() => setShowLang((s) => !s)}
-              aria-label="Language"
-              title="Language"
+              aria-label={t.language || "Language"}
+              title={LANGUAGES[language].name}
               style={{
                 width: 36,
                 height: 36,
                 borderRadius: 18,
-                border: '1px solid var(--border)',
+                border: showLang ? '1px solid #667eea' : '1px solid var(--border)',
                 background: 'var(--card)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                fontSize: 20,
+                transition: 'all 0.2s ease',
               }}
             >
-              <Globe size={18} />
+              {LANGUAGES[language].flag}
             </button>
 
             {showLang && (
@@ -292,50 +320,57 @@ export default function Navbar({
                   borderRadius: 10,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                   padding: 6,
-                  minWidth: 140,
+                  minWidth: 160,
                   zIndex: 200,
+                  animation: 'fadeIn 0.15s ease',
                 }}
               >
-                {[
-                  { v: 'en', label: 'English' },
-                  { v: 'fr', label: 'Français' },
-                  { v: 'es', label: 'Español' },
-                  { v: 'de', label: 'Deutsch' },
-                  { v: 'it', label: 'Italiano' },
-                  { v: 'pt', label: 'Português' },
-                ].map((item) => (
+                {(Object.keys(LANGUAGES) as SupportedLanguage[]).map((lang) => (
                   <button
-                    key={item.v}
-                    onClick={() => onLang(item.v)}
+                    key={lang}
+                    onClick={() => onLang(lang)}
                     style={{
                       width: '100%',
                       textAlign: 'left',
-                      padding: '8px 10px',
+                      padding: '8px 12px',
                       borderRadius: 8,
                       border: 'none',
-                      background: lang === item.v ? 'var(--pill)' : 'transparent',
+                      background: language === lang ? 'var(--pill)' : 'transparent',
                       color: 'var(--text)',
                       cursor: 'pointer',
                       fontSize: 14,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 8,
+                      gap: 10,
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (language !== lang) {
+                        e.currentTarget.style.background = 'var(--bg)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (language !== lang) {
+                        e.currentTarget.style.background = 'transparent';
+                      }
                     }}
                   >
-                    <span>{item.label}</span>
-                    {lang === item.v ? <ChevronDown size={14} style={{ transform: 'rotate(-90deg)' }} /> : null}
+                    <span style={{ fontSize: 20 }}>{LANGUAGES[lang].flag}</span>
+                    <span style={{ flex: 1 }}>{LANGUAGES[lang].name}</span>
+                    {language === lang && (
+                      <span style={{ color: '#667eea', fontSize: 16, fontWeight: 'bold' }}>✓</span>
+                    )}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Theme (icône seule) */}
+          {/* Theme */}
           <button
             onClick={toggleTheme}
-            aria-label="Toggle theme"
-            title="Toggle theme"
+            aria-label={t.toggleTheme || "Toggle theme"}
+            title={t.toggleTheme || "Toggle theme"}
             style={{
               width: 36,
               height: 36,
@@ -346,9 +381,10 @@ export default function Navbar({
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
+              transition: 'all 0.2s ease',
             }}
           >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            <ThemeIcon size={16} />
           </button>
 
           {/* Auth */}
@@ -358,6 +394,8 @@ export default function Navbar({
                 onClick={onLoginClick}
                 style={{
                   padding: '8px 16px',
+                  minWidth: 120, // ← Augmenté pour "Iniciar Sesión" (le plus long)
+                  textAlign: 'center',
                   backgroundColor: 'transparent',
                   border: '2px solid #667eea',
                   borderRadius: 999,
@@ -365,9 +403,18 @@ export default function Navbar({
                   fontSize: 14,
                   fontWeight: 800,
                   cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#667eea';
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#667eea';
                 }}
               >
-                Log in
+                {t.login}
               </button>
             )
           ) : (
@@ -388,8 +435,15 @@ export default function Navbar({
                   backgroundColor: 'var(--bg)',
                   borderRadius: 24,
                   cursor: 'pointer',
+                  transition: 'all 0.2s ease',
                 }}
-                title="Account"
+                title={t.account || "Account"}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--pill)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg)';
+                }}
               >
                 <div
                   style={{
@@ -418,6 +472,24 @@ export default function Navbar({
           )}
         </div>
       </div>
+
+      <style jsx global>{`
+        .theme-icon [data-sun],
+        .theme-icon [data-moon] { display: none !important; }
+        html[data-theme="light"] .theme-icon [data-moon] { display: inline-flex !important; }
+        html[data-theme="dark"]  .theme-icon [data-sun]  { display: inline-flex !important; }
+        
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </header>
   );
 }

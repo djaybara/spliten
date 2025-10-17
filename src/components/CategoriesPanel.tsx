@@ -16,7 +16,7 @@ export default function CategoriesPanel({
   selected = 'all',
   onSelect,
   onNavigate,
-  title = 'Categories',
+  title = 'Panels',
 }: Props) {
   return (
     <div style={{

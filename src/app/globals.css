@@ -7,9 +7,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* === THEME VARIABLES (ensure they're always defined) === */
+/* === THEME VARIABLES === */
+/* Default values - will be overridden by the script */
 :root {
-  /* Light mode defaults - will be overridden by script if needed */
   --bg: #F7F9FA;
   --text: #1a1a1a;
   --muted: #536471;
@@ -25,22 +25,26 @@
   --sticky-bg: var(--card);
 }
 
-/* Dark mode - applied when .dark class is present */
-:root.dark {
-  --bg: #0b0f14;
-  --text: #E6EEF6;
-  --muted: #9FB2C7;
-  --card: #10161d;
-  --border: #1d2731;
-  --pill: #0f141a;
-  --pillHover: #16202a;
+/* Dark theme values when data-theme="dark" */
+[data-theme="dark"] {
+  --bg: #0b0f14 !important;
+  --text: #E6EEF6 !important;
+  --muted: #9FB2C7 !important;
+  --card: #10161d !important;
+  --border: #1d2731 !important;
+  --pill: #0f141a !important;
+  --pillHover: #16202a !important;
 }
 
-/* Base styles using variables */
-html, body { 
-  background: var(--bg); 
+/* Base styles - NO transitions here */
+html, body {
+  background-color: var(--bg);
   color: var(--text);
-  /* Ensure smooth transitions only after initial load */
+}
+
+/* Transitions only after page load */
+html[data-theme-ready="true"],
+html[data-theme-ready="true"] body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -351,3 +355,29 @@ body {
 .to-red-100 { --tw-gradient-to: #fee2e2; }
 .from-green-500 { --tw-gradient-from: #22c55e; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
 .to-green-400 { --tw-gradient-to: #4ade80; }
+
+/* === ThemeIcon (anti-hydration-mismatch) === */
+.theme-icon [data-sun],
+.theme-icon [data-moon] { display: none; }
+
+/* On montre l'icône en fonction de l'attribut html[data-theme] */
+html[data-theme="light"] .theme-icon [data-sun] { display: inline-flex; }
+html[data-theme="dark"]  .theme-icon [data-moon]{ display: inline-flex; }
+
+aside::-webkit-scrollbar {
+  width: 4px;
+}
+
+aside::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+aside::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+aside::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
