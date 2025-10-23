@@ -54,7 +54,11 @@
 │   │   ├── HomeClient.tsx
 │   │   ├── api
 │   │   │   ├── ai
-│   │   │   │   └── insights
+│   │   │   │   ├── detect-format
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── insights
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── prefill
 │   │   │   │       └── route.ts
 │   │   │   ├── arguments
 │   │   │   │   └── [id]
@@ -189,4 +193,4 @@
 ├── tailwind.config.ts
 └── tsconfig.json
 
-56 directories, 134 files
+58 directories, 136 files

@@ -25,23 +25,19 @@ async function ensureUniqueSlug(base: string) {
 function calculateBadges(question: any): Array<'trending' | 'controversial' | 'new' | 'top'> {
   const badges: Array<'trending' | 'controversial' | 'new' | 'top'> = [];
   
-  // NEW : créé il y a moins de 24h
   const ageHours = (Date.now() - new Date(question.createdAt).getTime()) / (1000 * 60 * 60);
   if (ageHours < 24) badges.push('new');
   
-  // CONTROVERSIAL : ratio pour/contre entre 0.4 et 0.6
   const total = question.votesACount + question.votesBCount;
   if (total >= 10) {
     const ratio = Math.min(question.votesACount, question.votesBCount) / total;
     if (ratio >= 0.4 && ratio <= 0.6) badges.push('controversial');
   }
   
-  // TOP : plus de 50 votes au total
   if (total >= 50) badges.push('top');
   
-  // TRENDING : beaucoup d'activité récente (votes + comments)
   const totalEngagement = total + (question.commentsCount || 0);
-  if (totalEngagement >= 20 && ageHours < 168) badges.push('trending'); // 7 jours
+  if (totalEngagement >= 20 && ageHours < 168) badges.push('trending');
   
   return badges;
 }
@@ -97,9 +93,16 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({} as any));
 
     const title = (body?.title ?? '').toString().trim();
+    const description = (body?.description ?? '').toString().trim();
     const category = (body?.category ?? 'general').toString().trim() || 'general';
     const labelA = (body?.labelA ?? 'Yes').toString().trim() || 'Yes';
     const labelB = (body?.labelB ?? 'No').toString().trim() || 'No';
+    const mediaUrl = body?.mediaUrl ? body.mediaUrl.toString().trim() : undefined;
+    const sources = body?.sources || undefined;
+    
+    // ✅ NOUVEAU : Récupérer les arguments
+    const argumentsFor = body?.argumentsFor || undefined;
+    const argumentsAgainst = body?.argumentsAgainst || undefined;
 
     if (!title) {
       return NextResponse.json({ ok: false, error: 'Missing title' }, { status: 400 });
@@ -108,7 +111,7 @@ export async function POST(req: Request) {
     const base = slugify(title);
     const slug = await ensureUniqueSlug(base || 'question');
 
-    // Auteur démo (à remplacer par Clerk plus tard)
+    // Auteur démo
     const author =
       (await prisma.user.findFirst()) ??
       (await prisma.user.create({
@@ -124,21 +127,47 @@ export async function POST(req: Request) {
         id: crypto.randomUUID(),
         title,
         slug,
+        description: description || '',
         category,
         labelA,
         labelB,
+        mediaUrl,
         authorId: author.id,
+        // ✅ NOUVEAU : Sauvegarder les arguments en JSON
+        argumentsFor: argumentsFor ? JSON.stringify(argumentsFor) : undefined,
+        argumentsAgainst: argumentsAgainst ? JSON.stringify(argumentsAgainst) : undefined,
       },
       select: {
         id: true,
         slug: true,
         title: true,
+        description: true,
         category: true,
         labelA: true,
         labelB: true,
         createdAt: true,
+        argumentsFor: true,
+        argumentsAgainst: true,
       },
     });
+
+    // ✅ NOUVEAU : Créer les SourceLink si des sources sont fournies
+    if (sources && Array.isArray(sources) && sources.length > 0) {
+      const sourceLinks = sources
+        .filter((s: any) => s && typeof s === 'object' && s.url)
+        .map((s: any) => ({
+          id: crypto.randomUUID(),
+          url: s.url,
+          label: s.label || null,
+          questionId: created.id,
+        }));
+      
+      if (sourceLinks.length > 0) {
+        await prisma.sourceLink.createMany({
+          data: sourceLinks,
+        });
+      }
+    }
 
     return NextResponse.json({ ok: true, question: created });
   } catch (err) {

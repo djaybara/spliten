@@ -1,12 +1,12 @@
 'use client';
 import React, { useMemo, useState } from 'react';
-import { Plus, ThumbsUp, ThumbsDown, Flag } from 'lucide-react';
+import { Plus, ThumbsUp, ThumbsDown, Flag, Sparkles } from 'lucide-react';
 import SourcePills from '@/components/SourcePills';
 
-export type SourceLink = { url: string };
+export type SourceLink = { url: string; label?: string };
 
 export type UIComment = {
-  id: number;
+  id: number | string;
   text: string;
   author: string;
   timeAgo: string;
@@ -15,11 +15,11 @@ export type UIComment = {
   side: 'pour' | 'contre';
   parentId?: number;
   sources?: SourceLink[];
-  // tolérance : certains fetch mappent d'autres clés
   sourceLinks?: SourceLink[];
   links?: ({ url: string } | string)[];
   refs?: ({ url: string } | string)[];
   views?: number;
+  isAI?: boolean; // ✅ NOUVEAU : Marquer comme argument IA
 };
 
 type Props = {
@@ -34,15 +34,16 @@ type Props = {
   isLoggedIn: boolean;
   requireAuth: (cb: () => void) => void;
   onAdd: (text: string, sources?: SourceLink[]) => void;
-  onVote: (commentId: number, type: 'up' | 'down') => void;
-  onReply: (parentId: number, text: string, sources?: SourceLink[]) => void;
+  onVote: (commentId: number | string, type: 'up' | 'down') => void;
+  onReply: (parentId: number | string, text: string, sources?: SourceLink[]) => void;
+  aiArguments?: any[]; // ✅ NOUVEAU : Arguments IA
 };
 
-/* ===== Helpers locaux : normalisation & fallback multi-clés ===== */
 function normalizeHttp(u?: string) {
   if (!u) return '';
   return /^https?:\/\//i.test(u) ? u : `https://${u}`;
 }
+
 function pickSourcesAny(maybe: any): SourceLink[] {
   if (!maybe) return [];
   const arr =
@@ -55,7 +56,7 @@ function pickSourcesAny(maybe: any): SourceLink[] {
   return (arr as any[])
     .map((x) => (typeof x === 'string' ? { url: x } : x))
     .filter((x) => x && typeof x.url === 'string')
-    .map((x) => ({ url: normalizeHttp(x.url) }))
+    .map((x) => ({ url: normalizeHttp(x.url), label: x.label }))
     .filter((x) => !!x.url);
 }
 
@@ -73,12 +74,14 @@ export default function ArgumentsColumn({
   onAdd,
   onVote,
   onReply,
+  aiArguments = [],
 }: Props) {
   const [showInput, setShowInput] = useState(false);
   const [newText, setNewText] = useState('');
   const [newSource, setNewSource] = useState('');
 
   const isConvincing = (c: UIComment) => {
+    if (c.isAI) return false; // Les arguments IA ne peuvent pas être "convincing"
     const denom = Math.max(c.views ?? 0, c.votes * 4, 1);
     const score = (Math.max(c.votes, 0) / denom) * 100;
     return score >= 65 && c.votes >= 20;
@@ -86,7 +89,7 @@ export default function ArgumentsColumn({
 
   const topLevel = useMemo(() => comments.filter((c) => !c.parentId), [comments]);
   const byParent = useMemo(() => {
-    const m = new Map<number, UIComment[]>();
+    const m = new Map<number | string, UIComment[]>();
     comments.filter((c) => c.parentId).forEach((r) => {
       const arr = m.get(r.parentId!) || [];
       arr.push(r);
@@ -157,10 +160,74 @@ export default function ArgumentsColumn({
           </div>
         )}
 
-        {/* Items */}
+        {/* ✅ ARGUMENTS IA EN PREMIER */}
+        {aiArguments.length > 0 && aiArguments.map((aiArg: any, idx: number) => {
+          const aiSources = aiArg.source ? [aiArg.source] : [];
+          return (
+            <div 
+              key={`ai-${idx}`} 
+              className="rounded-lg p-3 border" 
+              style={{ 
+                borderColor: side === 'pour' ? '#00C85155' : '#FF354755', 
+                background: side === 'pour' ? '#00C85108' : '#FF35470  8',
+                position: 'relative'
+              }}
+            >
+              {/* Badge IA */}
+              <div style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '2px 8px',
+                borderRadius: 999,
+                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                color: 'white',
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                <Sparkles size={10} />
+                AI
+              </div>
+
+              <div className="text-xs" style={{ color: 'var(--muted)', marginBottom: 4 }}>
+                <span 
+                  className="font-medium" 
+                  style={{ 
+                    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    fontWeight: 800
+                  }}
+                >
+                  Spliten AI
+                </span>
+                <span className="mx-1">•</span>
+                <span>Generated</span>
+              </div>
+
+              <p className="text-sm" style={{ color: 'var(--text)', marginBottom: 6, paddingRight: 50 }}>
+                {aiArg.text}
+              </p>
+
+              {/* Sources IA */}
+              {aiSources.length > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  <SourcePills sources={aiSources} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Arguments utilisateurs */}
         {topLevel.map((c) => {
           const replies = byParent.get(c.id) || [];
-          const cSources = pickSourcesAny(c); // <-- NOUVEAU : fallback multi-clés
+          const cSources = pickSourcesAny(c);
           return (
             <div key={c.id} className="bg-white rounded-lg p-3 border" style={{ borderColor: 'var(--border)', background: 'var(--card)' }}>
               <div className="text-xs" style={{ color: 'var(--muted)', marginBottom: 4 }}>
@@ -186,7 +253,6 @@ export default function ArgumentsColumn({
                 )}
               </div>
 
-              {/* Sources (argument) */}
               {cSources.length > 0 && (
                 <div style={{ marginTop: 6 }}>
                   <SourcePills sources={cSources} />
@@ -246,7 +312,7 @@ export default function ArgumentsColumn({
               {replies.length > 0 && (
                 <div style={{ marginTop: 10, paddingLeft: 12, borderLeft: '2px solid var(--border)' }}>
                   {replies.sort((a, b) => b.votes - a.votes).map((r) => {
-                    const rSources = pickSourcesAny(r); // <-- NOUVEAU : fallback multi-clés
+                    const rSources = pickSourcesAny(r);
                     return (
                       <div key={r.id} style={{ marginTop: 8 }}>
                         <div className="text-xs" style={{ color: 'var(--muted)', marginBottom: 4 }}>
@@ -278,7 +344,7 @@ function ReplyBox({
   onReply,
 }: {
   parent: UIComment;
-  onReply: (parentId: number, text: string, sources?: SourceLink[]) => void;
+  onReply: (parentId: number | string, text: string, sources?: SourceLink[]) => void;
 }) {
   const [t, setT] = useState('');
   const [s, setS] = useState('');

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import ClientInteractive, { type ClientQuestion } from './ClientInteractive';
 
 export const runtime = 'nodejs';
-export const revalidate = 60; // ISR
+export const revalidate = 60;
 
 type PageProps = { params: { slug: string } };
 
@@ -28,7 +28,6 @@ function calculateBadges(question: any): Array<'trending' | 'controversial' | 'n
   return badges;
 }
 
-// Helpers
 function toClientQuestion(row: any, commentsCount: number): ClientQuestion {
   return {
     id: row.id,
@@ -66,20 +65,25 @@ function mapArgToUI(arg: any) {
 export default async function QuestionPage({ params }: PageProps) {
   const { slug } = params;
 
-  // 1) Récupérer la question par slug via SQL paramétré
+  // 1) Récupérer la question
   const rows = await prisma.$queryRaw<Array<{
     id: string;
     title: string;
     description: string | null;
     category: string | null;
+    labelA: string;
+    labelB: string;
     createdAt: Date;
     viewsCount: number | null;
     votesACount: number | null;
     votesBCount: number | null;
     authorUsername: string | null;
+    argumentsFor: string | null;
+    argumentsAgainst: string | null;
   }>>`
-    SELECT q.id, q.title, q.description, q.category, q."createdAt",
-           q."viewsCount", q."votesACount", q."votesBCount",
+    SELECT q.id, q.title, q.description, q.category, q."labelA", q."labelB",
+           q."createdAt", q."viewsCount", q."votesACount", q."votesBCount",
+           q."argumentsFor", q."argumentsAgainst",
            u.username as "authorUsername"
     FROM "Question" q
     LEFT JOIN "User" u ON u.id = q."authorId"
@@ -90,11 +94,31 @@ export default async function QuestionPage({ params }: PageProps) {
   if (rows.length === 0) return notFound();
   const row = rows[0];
 
-  // 2) Charger en parallèle (pas de N+1)
+  // 2) Parser les arguments JSON
+  let aiArgumentsFor: any[] = [];
+  let aiArgumentsAgainst: any[] = [];
+  
+  try {
+    if (row.argumentsFor) {
+      aiArgumentsFor = JSON.parse(row.argumentsFor);
+    }
+  } catch (e) {
+    console.error('Failed to parse argumentsFor:', e);
+  }
+  
+  try {
+    if (row.argumentsAgainst) {
+      aiArgumentsAgainst = JSON.parse(row.argumentsAgainst);
+    }
+  } catch (e) {
+    console.error('Failed to parse argumentsAgainst:', e);
+  }
+
+  // 3) Charger en parallèle
   const [qSources, topArgs, discussions] = await Promise.all([
     prisma.sourceLink.findMany({
       where: { questionId: row.id },
-      select: { url: true },
+      select: { url: true, label: true },
     }),
     prisma.argument.findMany({
       where: { questionId: row.id, parentId: null },
@@ -137,7 +161,7 @@ export default async function QuestionPage({ params }: PageProps) {
     }),
   ]);
 
-  // 3) Normalisation vers les props client
+  // 4) Normalisation
   const initialComments: any[] = [];
   for (const a of topArgs) {
     initialComments.push(mapArgToUI(a));
@@ -153,7 +177,7 @@ export default async function QuestionPage({ params }: PageProps) {
   }
 
   const question: ClientQuestion = toClientQuestion(row, initialComments.length);
-  const initialSources = qSources.map(s => ({ url: s.url }));
+  const initialSources = qSources.map(s => ({ url: s.url, label: s.label || undefined }));
 
   const initialDiscussions = discussions.map(d => ({
     id: d.id,
@@ -165,7 +189,7 @@ export default async function QuestionPage({ params }: PageProps) {
     sources: (d.sources ?? []).map(s => ({ url: s.url })),
   }));
 
-  // 4) Rendu
+  // 5) Rendu - Passer les arguments IA à ClientInteractive
   return (
     <ClientInteractive
       slug={slug}
@@ -173,6 +197,9 @@ export default async function QuestionPage({ params }: PageProps) {
       initialSources={initialSources}
       initialComments={initialComments as any}
       initialDiscussions={initialDiscussions as any}
+      // ✅ NOUVEAU : Passer les arguments IA
+      aiArgumentsFor={aiArgumentsFor}
+      aiArgumentsAgainst={aiArgumentsAgainst}
     />
   );
 }

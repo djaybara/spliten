@@ -78,6 +78,8 @@ model Question {
   controversyScore    Float          @default(0)
   dedupeHash          String?        @unique
   description         String         @default("")
+  argumentsFor        String?        // JSON
+  argumentsAgainst    String?        // JSON
   format              PostFormat     @default(BINARY)  // ✅ NOUVEAU
   discussionsCount    Int            @default(0)
   downvotesCount      Int            @default(0)
@@ -187,6 +189,7 @@ model Discussion {
 model SourceLink {
   id           String      @id @default(cuid())
   url          String
+  label        String? 
   questionId   String?
   argumentId   String?
   discussionId String?
